@@ -1,0 +1,179 @@
+---
+title: "Focusing on Afghanistan: A Comparative Look at Global Development, Health, and Wealth Indicators"
+format: html
+editor: visual
+author: Syed Mujahid Ulla
+date: "April 24, 2024"
+echo: false
+warning: false
+---
+
+```{r}
+library(readr)
+
+unicef_indicator_1 <- read_csv("unicef_indicator_2.csv", col_types = cols(
+  country = col_character(),
+  alpha_2_code = col_character(),
+  alpha_3_code = col_character(),
+  numeric_code = col_double(),
+  indicator = col_character(),
+  time_period = col_double(),
+  obs_value = col_double(),
+  sex = col_character(),
+  unit_multiplier = col_character(),
+  unit_of_measure = col_character(),
+  observation_status = col_character(),
+  observation_confidentiality = col_character(),
+  time_period_activity_related_to_when_the_data_are_collected = col_logical(),
+  current_age = col_character()
+))
+
+unicef_metadata <- read_csv("unicef_metadata.csv", col_types = cols(
+  country = col_character(),
+  alpha_2_code = col_character(),
+  alpha_3_code = col_character(),
+  iso3c = col_character(),
+  numeric_code = col_double(),
+  year = col_double(),
+  GNI = col_double(),
+  Inflation = col_double(),
+  Life_expectancy = col_double(),
+  Military_expenditure = col_double()
+))
+
+library(dplyr)
+combined_data <- unicef_indicator_1 %>%
+  inner_join(unicef_metadata, by = c("alpha_3_code", "time_period" = "year"))
+```
+
+A Comparative Look at Global Development, Health, and Wealth Indicators" offers an insightful analysis of Afghanistan’s position in global indices. This study compares Afghanistan's development, health status, and economic metrics with global standards, highlighting the challenges and opportunities in its journey towards progress.
+
+```{r}
+# Rename columns to remove '.x' and '.y' suffixes and avoid duplicates
+combined_data <- combined_data %>%
+  rename(
+    country = country.x,
+    alpha_2_code = alpha_2_code.x,
+    numeric_code = numeric_code.x,
+    Population_total = `Population, total`,
+    GDP_per_capita = `GDP per capita (constant 2015 US$)`,
+    GNI_current_USD = `GNI (current US$)`,
+    Inflation_annual_percent = `Inflation, consumer prices (annual %)`,
+    Life_expectancy = `Life expectancy at birth, total (years)`,
+    Military_expenditure_percent_of_GDP = `Military expenditure (% of GDP)`
+  )
+
+combined_data <- select(combined_data, -matches("\\.y$"))
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+
+world <- ne_countries(scale = "medium", type = 'countries', returnclass = "sf")
+
+world_data <- left_join(world, combined_data, by = c("iso_a3" = "alpha_3_code"))
+
+ggplot(data = world_data) +
+  geom_sf(aes(fill = Life_expectancy), color = "white", size = 0.2) +
+  geom_sf(data = subset(world_data, iso_a3 == "AFG"), fill = "red", color = "black", size = 0.5) +
+  scale_fill_viridis_c(option = "plasma", direction = -1, na.value = "grey50", name = "Life Expectancy") +
+  labs(title = "",
+       subtitle = "Life expectancy highlighted, with Afghanistan in red",
+       caption = "") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+***Life Expectancy in Afghanistan Versus the World***
+
+This visualization starkly highlights the differences in life expectancy across the globe, with a specific focus on Afghanistan, depicted in red. By comparing Afghanistan to other countries, it becomes evident how geopolitical, economic, and health factors intertwine to impact the length and quality of life. Afghanistan's red coloration stands out against the gradient of life expectancies elsewhere, illustrating the significant challenges faced by its population. Such a visual representation not only draws attention to Afghanistan's urgent needs but also serves as a comparative backdrop that underscores global disparities in health outcomes. This map invites viewers to reflect on the complex layers of influence that determine life expectancy, from healthcare access and economic stability to social policies and international aid. As we navigate the intricate web of development indicators, this map underscores the critical need for targeted interventions and sustained global attention to improve health outcomes in regions lagging behind the global average.
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(scales)  
+countries_of_interest <- c("AFG", "USA", "CHN", "GBR", "FRA", "IND", "NGA")
+gni_data <- combined_data %>%
+  filter(alpha_3_code %in% countries_of_interest) %>%
+  select(country, GNI_current_USD) %>%
+  arrange(desc(GNI_current_USD))
+
+gni_chart <- ggplot(gni_data, aes(x = reorder(country, GNI_current_USD), y = GNI_current_USD / 1000, fill = country)) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = label_number(scale = 1, suffix = "K", accuracy = 1)) +  # Apply formatting to show in '000s as "K"
+  labs(title = "GNI Per Capita in Afghanistan and Comparatively Worldwide",
+       subtitle = "Analyzing economic health through GNI per capita",
+       x = "Country",
+       y = "GNI (thousands US$)",
+       fill = "Country") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3") 
+print(gni_chart)
+
+```
+
+***Global Economic Footprints: Tracing GNI Per Capita from Afghanistan to the World***
+
+In today's globalized economy, understanding the economic health of nations through indicators such as GNI per capita is crucial. This bar chart, titled "Global Economic Footprints: Tracing GNI Per Capita from Afghanistan to the World," provides a clear comparative analysis of how Afghanistan stands economically against countries like the USA, China, and India. By displaying GNI in thousands of US dollars, it gives a straightforward comparison of economic capability per capita, highlighting disparities and economic scales across different governance and development models. Afghanistan, often in the spotlight for its geopolitical and economic challenges, is shown alongside developed and rapidly developing nations. This visualization invites observers to delve deeper into the factors contributing to these disparities, from political stability and governance to foreign investments and resource management. It also prompts discussions about how economic health influences other facets of national welfare, such as education, healthcare, and infrastructure. The bar chart uses a clean and minimalistic design with countries ordered by their GNI per capita, and each country uniquely colored to differentiate easily. The 'K' suffix on the y-axis values enhances readability, focusing attention on the comparative magnitudes rather than exact figures. Such visualizations not only inform policy discussions and aid allocations but also equip the public and decision-makers with the data necessary to foster economic discussions and strategic planning. Through this story, the chart doesn't just depict numbers; it narrates the ongoing tale of global economic interdependencies and the quest for balance in development. It serves as a call to action for higher-income countries to assist those with lower GNIs through targeted aid and economic partnerships, aiming to create a more balanced global economy.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+scatter_data <- combined_data %>%
+  filter(!is.na(Population_total) & !is.na(GDP_per_capita)) %>%
+  mutate(is_afghanistan = ifelse(alpha_3_code == "AFG", "Afghanistan", "Other Countries"))
+
+scatter_plot <- ggplot(scatter_data, aes(x = Population_total, y = GDP_per_capita, color = is_afghanistan)) +
+  geom_point(alpha = 0.5, size = 3) +  
+  geom_point(data = filter(scatter_data, is_afghanistan == "Afghanistan"), color = "red", size = 6) + 
+  geom_smooth(method = "lm", color = "black", se = FALSE) + 
+  labs(title = "Population Size vs. Economic Output: A Global Perspective",
+       subtitle = "Analyzing the relationship between total population and GDP per capita, with a focus on Afghanistan",
+       x = "Total Population",
+       y = "GDP Per Capita (US$)",
+       color = "Country Category") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_color_manual(values = c("Afghanistan" = "red", "Other Countries" = "blue"))
+
+print(scatter_plot)
+
+```
+
+***Demographic Dynamics and Economic Growth: Unpacking Afghanistan's Position on the Global Stage***
+
+This scatter plot offers a compelling visual exploration of the correlation between population sizes and per capita economic output across various countries, pinpointing Afghanistan in this global comparison. Highlighted in red, Afghanistan's data points reveal its unique economic trajectory amidst fluctuating demographic trends. The visualization underscores how larger populations do not necessarily equate to higher GDP per capita, challenging common perceptions about economic success and population dynamics. For Afghanistan, the analysis becomes particularly pertinent, illustrating the complex interplay between its growing population and economic strategies aimed at improving per capita income. This chart not only serves as a quantitative analysis but also invites deeper discussions on the policies needed to harness demographic growth for sustainable economic development. It highlights the critical need for targeted economic reforms and investments that could potentially transform Afghanistan’s economic landscape in the face of demographic pressures.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+afghan_time_series <- combined_data %>%
+  filter(alpha_3_code == "AFG", !is.na(time_period), !is.na(obs_value)) %>%
+  arrange(time_period)
+
+time_series_plot <- ggplot(afghan_time_series, aes(x = time_period, y = obs_value)) +
+  geom_line(group = 1, color = "blue") +  
+  geom_point(color = "red", size = 3) +
+  labs(title = "Tracking Change Over Time: Afghanistan's Development Through the Years",
+       subtitle = "Time Series Analysis of Observed Values",
+       x = "Time Period",
+       y = "Observed Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylim(15, 24)  
+print(time_series_plot)
+
+```
+
+***A Decade of Transformation: Tracing Afghanistan's Developmental Trajectory***
+
+This time series plot captures a decade of transformative change in Afghanistan, charting the fluctuations in key developmental indicators from year to year. Each data point on the graph represents an annual snapshot, revealing a pattern of gradual but significant shifts. With a minimum observed value of 15.3 and a maximum of 23.9 over the period, the plot underscores not just the highs and lows but also the underlying resilience and evolving challenges within the country. The trend line, highlighted against a scaled y-axis, emphasizes these changes, providing a clear visual representation of progress and setbacks. As Afghanistan navigates through complexities both internal and external, this graph serves as a testament to its enduring journey towards growth and stability. The insights derived from this visualization are crucial for policymakers, international agencies, and stakeholders committed to supporting Afghanistan's developmental aspirations, offering a concrete measure of past efforts and a guidepost for future initiatives.
